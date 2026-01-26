@@ -1,0 +1,20 @@
+# CA Certificate Bundle Configuration for godot-git-plugin
+# Uncomment the line that matches your system
+
+# Linux (Debian/Ubuntu/Mint)
+#/etc/ssl/certs/ca-certificates.crt
+
+# Linux (RHEL/CentOS/Fedora)
+# /etc/pki/tls/certs/ca-bundle.crt
+
+# Linux (OpenSUSE)
+# /etc/ssl/ca-bundle.pem
+
+# macOS (Homebrew OpenSSL)
+# /usr/local/etc/openssl@3/cert.pem
+
+# macOS (System)
+# /etc/ssl/cert.pem
+
+# Custom path
+# /path/to/your/ca-bundle.crt

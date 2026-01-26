@@ -29,7 +29,8 @@ public:
 	git_oid pull_merge_oid = {};
 	godot::String repo_project_path;
 	std::unordered_map<git_status_t, ChangeType> map_changes;
-
+	godot::String ca_bundle_path;
+    
 	GitPlugin();
 
 	// Endpoints
@@ -56,6 +57,7 @@ public:
 	void _push(const godot::String &remote, bool force) override;
 	void _fetch(const godot::String &remote) override;
 	godot::TypedArray<godot::Dictionary> _get_line_diff(const godot::String &file_path, const godot::String &text) override;
+	void _set_ca_bundle_path(const godot::String &path);
 
 	// Helpers
 	godot::TypedArray<godot::Dictionary> _parse_diff(git_diff *p_diff);

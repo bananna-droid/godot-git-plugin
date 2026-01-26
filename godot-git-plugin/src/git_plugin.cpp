@@ -29,8 +29,34 @@
 
 #define COMMA ,
 
+godot::String get_plugin_base_path() {
+    return "res://addons/godot-git-plugin/";
+}
+
 void GitPlugin::_bind_methods() {
-	// Doesn't seem to require binding functions for now
+	godot::ClassDB::bind_method(godot::D_METHOD("set_ca_bundle_path", "path"), &GitPlugin::_set_ca_bundle_path);
+}
+
+void GitPlugin::_set_ca_bundle_path(const godot::String &path) {
+	// Store path for later use. If empty, default runtime behavior remains unchanged.
+	ca_bundle_path = path;
+
+	if (!ca_bundle_path.is_empty()) {
+		// Convert to C string
+		std::string path_str = std::string(path.utf8().get_data());
+		
+		// Tell libgit2 to use this certificate file
+		int error = git_libgit2_opts(GIT_OPT_SET_SSL_CERT_LOCATIONS, path_str.c_str(), NULL);
+		
+		if (error == 0) {
+			godot::UtilityFunctions::print("GitPlugin: CA bundle set to ", ca_bundle_path);
+		} else {
+			const git_error *e = git_error_last();
+			godot::UtilityFunctions::print("GitPlugin: Failed to set CA bundle: ", e ? e->message : "unknown error");
+		}
+	} else {
+		godot::UtilityFunctions::print("GitPlugin: CA bundle cleared");
+	}
 }
 
 GitPlugin::GitPlugin() {
@@ -700,6 +726,25 @@ bool GitPlugin::_initialize(const godot::String &project_path) {
 	if (!head) {
 		create_gitignore_and_gitattributes();
 	}
+
+
+    godot::String config_path = "res://addons/godot-git-plugin/ca_cert_config.txt";
+    if (godot::FileAccess::file_exists(config_path)) {
+        godot::UtilityFunctions::print("GitPlugin: file_exists ",config_path);
+        godot::Ref<godot::FileAccess> file =
+            godot::FileAccess::open(config_path, godot::FileAccess::READ);
+        if (file.is_valid()) {
+            while (!file->eof_reached()) {
+                godot::String line = file->get_line().strip_edges();
+                if (line.is_empty() || line.begins_with("#")) {
+                    continue;
+                }
+                _set_ca_bundle_path(line);
+                break;
+            }
+            file->close();
+        }
+    }
 
 	return true;
 }
