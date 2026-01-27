@@ -30,7 +30,7 @@ public:
 	godot::String repo_project_path;
 	std::unordered_map<git_status_t, ChangeType> map_changes;
 	godot::String ca_bundle_path;
-    
+
 	GitPlugin();
 
 	// Endpoints
