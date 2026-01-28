@@ -1,5 +1,17 @@
 # CA Certificate Bundle Configuration for godot-git-plugin
-# Uncomment the line that matches your system
+# 
+# This file allows you to specify a custom CA certificate bundle path
+# to resolve SSL certificate validation errors on all platforms.
+#
+# INSTRUCTIONS:
+# 1. Uncomment the line that matches your system
+# 2. Adjust the path if your certificates are located elsewhere
+# 3. Restart Godot after making changes
+
+#
+# ============================================================
+# LINUX - Common certificate bundle locations:
+# ============================================================
 
 # Linux (Debian/Ubuntu/Mint)
 #/etc/ssl/certs/ca-certificates.crt
@@ -10,6 +22,13 @@
 # Linux (OpenSUSE)
 # /etc/ssl/ca-bundle.pem
 
+# Custom path
+# /path/to/your/ca-bundle.crt
+
+# ============================================================
+# MACOS - Common certificate bundle locations:
+# ============================================================
+
 # macOS (Homebrew OpenSSL)
 # /usr/local/etc/openssl@3/cert.pem
 
@@ -18,3 +37,17 @@
 
 # Custom path
 # /path/to/your/ca-bundle.crt
+
+# ============================================================
+# WINDOWS - Common certificate bundle locations:
+# ============================================================
+
+# Use forward slashes (/) in paths, even on Windows
+# Git backend selection during installation doesn't affect this plugin
+# Git for Windows (works with both OpenSSL and Secure Channel installations)
+# Possible Windows Paths for cert included with Git
+# C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+# C:/Program Files/Git/usr/ssl/certs/ca-bundle.crt
+
+# Custom path
+# C:/path/to/your/ca-bundle.crt

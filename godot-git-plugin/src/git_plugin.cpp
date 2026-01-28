@@ -42,14 +42,17 @@ void GitPlugin::_set_ca_bundle_path(const godot::String &path) {
 	ca_bundle_path = path;
 
 	if (!ca_bundle_path.is_empty()) {
+		// Normalize path (convert backslashes to forward slashes)
+		godot::String normalized_path = ca_bundle_path.replace("\\", "/");
+
 		// Convert to C string
-		std::string path_str = std::string(path.utf8().get_data());
+		std::string path_str = std::string(normalized_path.utf8().get_data());
 
 		// Tell libgit2 to use this certificate file
 		int error = git_libgit2_opts(GIT_OPT_SET_SSL_CERT_LOCATIONS, path_str.c_str(), NULL);
 
 		if (error == 0) {
-			godot::UtilityFunctions::print("GitPlugin: CA bundle set to ", ca_bundle_path);
+			godot::UtilityFunctions::print("GitPlugin: CA bundle set to ", normalized_path);
 		} else {
 			const git_error *e = git_error_last();
 			godot::UtilityFunctions::print("GitPlugin: Failed to set CA bundle: ", e ? e->message : "unknown error");
