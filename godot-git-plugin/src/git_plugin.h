@@ -56,6 +56,7 @@ public:
 	void _push(const godot::String &remote, bool force) override;
 	void _fetch(const godot::String &remote) override;
 	godot::TypedArray<godot::Dictionary> _get_line_diff(const godot::String &file_path, const godot::String &text) override;
+	godot::String _get_password_from_keychain(const godot::String &username);
 
 	// Helpers
 	godot::TypedArray<godot::Dictionary> _parse_diff(git_diff *p_diff);

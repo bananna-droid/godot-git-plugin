@@ -72,7 +72,19 @@ bool GitPlugin::check_errors(int error, godot::String function, godot::String fi
 
 void GitPlugin::_set_credentials(const godot::String &username, const godot::String &password, const godot::String &ssh_public_key_path, const godot::String &ssh_private_key_path, const godot::String &ssh_passphrase) {
 	creds.username = username;
-	creds.password = password;
+	creds.password = ""; // Reset first to avoid stale credentials
+
+	// Priority 1: Explicit password from UI always wins
+	if (!password.is_empty()) {
+		creds.password = password;
+	}
+	// Priority 2: Best-effort OS credential lookup
+	else if (!username.is_empty()) {
+		creds.password = _get_password_from_keychain(username);
+		// If lookup fails, password remains empty (SSH or prompt later)
+	}
+
+	// SSH credentials are always set as provided
 	creds.ssh_public_key_path = ssh_public_key_path;
 	creds.ssh_private_key_path = ssh_private_key_path;
 	creds.ssh_passphrase = ssh_passphrase;
@@ -708,4 +720,97 @@ bool GitPlugin::_shut_down() {
 	repo.reset(); // Destroy repo object before libgit2 shuts down
 	GIT2_CALL_R(git_libgit2_shutdown(), "Could not shutdown Git Plugin", false);
 	return true;
+}
+
+static godot::String _shell_escape_arg(const godot::String &arg) {
+	godot::String escaped = arg.replace("\"", "\\\"");
+	return "\"" + escaped + "\"";
+}
+
+godot::String GitPlugin::_get_password_from_keychain(const godot::String &username) {
+	if (username.is_empty()) {
+		return "";
+	}
+#if defined(__linux__)
+	// Linux: best-effort lookup via secret-tool (libsecret / GNOME Keyring)
+	// Must match attributes used when storing credentials:
+	// application=godot-git-plugin, username=<username>
+	// Check if secret-tool exists
+	FILE *check = popen("command -v secret-tool 2>/dev/null", "r");
+	if (!check) {
+		return "";
+	}
+	char check_buf[8];
+	bool tool_available = fgets(check_buf, sizeof(check_buf), check) != nullptr;
+	pclose(check);
+	if (!tool_available) {
+		return "";
+	}
+	godot::String command =
+			"secret-tool lookup application godot-git-plugin username " +
+			_shell_escape_arg(username) + " 2>/dev/null";
+	FILE *pipe = popen(command.utf8().get_data(), "r");
+	if (!pipe) {
+		return "";
+	}
+	char buffer[256];
+	godot::String result;
+	while (fgets(buffer, sizeof(buffer), pipe)) {
+		result += buffer;
+	}
+	int exit_code = pclose(pipe);
+	if (exit_code != 0 || result.is_empty()) {
+		return "";
+	}
+	return result.strip_edges();
+#elif defined(__APPLE__)
+	// macOS: Keychain lookup
+	// Service name must match credential storage
+    // NOT TESTED
+	godot::String command =
+			"security find-generic-password -s godot-git-plugin -a " +
+			_shell_escape_arg(username) + " -w 2>/dev/null";
+	FILE *pipe = popen(command.utf8().get_data(), "r");
+	if (!pipe) {
+		return "";
+	}
+	char buffer[256];
+	godot::String result;
+	while (fgets(buffer, sizeof(buffer), pipe)) {
+		result += buffer;
+	}
+	int exit_code = pclose(pipe);
+	if (exit_code != 0 || result.is_empty()) {
+		return "";
+	}
+	return result.strip_edges();
+#elif defined(_WIN32)
+	// Windows: Credential Manager (generic credentials)
+    // NOT TESTED
+	godot::String target = "godot-git-plugin:" + username;
+	std::string target_utf8 = target.utf8().get_data();
+	int wide_len = MultiByteToWideChar(CP_UTF8, 0, target_utf8.c_str(), -1, nullptr, 0);
+	if (wide_len <= 0) {
+		return "";
+	}
+	std::vector<wchar_t> target_wide(wide_len);
+	if (!MultiByteToWideChar(CP_UTF8, 0, target_utf8.c_str(), -1, target_wide.data(), wide_len)) {
+		return "";
+	}
+	PCREDENTIALW credential = nullptr;
+	if (!CredReadW(target_wide.data(), CRED_TYPE_GENERIC, 0, &credential) || !credential) {
+		return "";
+	}
+	godot::String password;
+	if (credential->CredentialBlobSize > 0 && credential->CredentialBlob) {
+		password = godot::String::utf8(
+				(const char *)credential->CredentialBlob,
+				credential->CredentialBlobSize);
+	}
+	CredFree(credential);
+	return password;
+#else
+	// Unsupported platform
+	return "";
+#endif
 }
